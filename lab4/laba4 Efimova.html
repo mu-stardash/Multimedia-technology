@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Звезда зеленая с помощью WebGL</title>
+  <!-- Ефимова Дарья 22305!!! -->
+  <meta charset="utf-8" />
+</head>
+
+
+
+<body>
+  <!-- создание полотна для рисования -->
+  <canvas id="canvas1" width="400" height="400">Пожалуйста, используйте браузер, который поддерживает canvas</canvas>
+
+  <!-- фрагментный шейдер -->
+  <!-- цвет - зеленый -->
+  <script id="shader-fs" type="x-shader/x-fragment">
+    void main(void) {
+      gl_FragColor = vec4(0.2, 0.8, 0.2, 1.0); 
+    }
+  </script>
+
+  <!-- вершинный шейдер -->
+  <script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    void main(void) {
+      gl_Position = vec4(aVertexPosition, 1.0);
+    }
+  </script>
+
+  <script type="text/javascript">
+    var gl = null;      // контекст WebGL
+    var shaderProgram;  // для работы шейдеров
+    var vertexBuffer;   // буфер вершин
+    var indexBuffer;    //буфер индексов
+
+    // инициализация шейдеров
+    function initShaders() {
+      // получаем шейдеры
+      var fragmentShader = getShader(gl.FRAGMENT_SHADER, 'shader-fs');
+      var vertexShader = getShader(gl.VERTEX_SHADER, 'shader-vs');
+
+      // создаем обьект программы шейдеров
+      shaderProgram = gl.createProgram();
+
+      // прикрепляем шейдеры к обьекту
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+
+      // и свзываем программу с контекстом WebGL
+      gl.linkProgram(shaderProgram);
+
+      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        alert("Не удалось установить шейдеры");
+      }
+      // если все хорошо, начинаем использование программы
+      gl.useProgram(shaderProgram);
+      // устанавливаем атрибут программы
+      shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+      // и его подключение для использование
+      gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+    }
+
+    // функция создания шейдера по типу и ID источника
+    function getShader(type, id) {
+      var source = document.getElementById(id).innerHTML;
+      // создаем шейдер по его типу
+      var shader = gl.createShader(type);
+      // устанавливаем истоник шейдера 
+      gl.shaderSource(shader, source);
+      // компилируем
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Ошибка компиляции шейдера: " + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    // установка буферов вершин и индексов
+    function initBuffers() {
+      // массив координат вершин звезды
+      vertices = [-0.5, 0.0, 0.0,
+      -0.75, 0.5, 0.0,
+      -0.25, 0.5, 0.0,
+      0.0, 1.0, 0.0,
+      0.25, 0.5, 0.0,
+      0.75, 0.5, 0.0,
+      0.5, 0.0, 0.0,
+      0.75, -0.5, 0.0,
+      0.25, -0.5, 0.0,
+      0.0, -1.0, 0.0,
+      -0.25, -0.5, 0.0,
+      -0.75, -0.5, 0.0];
+
+      // индексы соединения вершин
+      indices = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 
+      7, 7, 8, 8, 9, 9, 10, 10, 11];
+
+      // создаем буфер вершин
+      vertexBuffer = gl.createBuffer();
+      // определяем тип буфера
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      // загрузка в буфер вершин и его типизация
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      // указываем количество тт
+      vertexBuffer.itemSize = 3;
+
+      // создаем буфер индексов
+      indexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+      // указываем число индексов
+      indexBuffer.numberOfItems = indices.length;
+    }
+
+    // отрисовка сцены
+    function draw() {
+      // цвет полотна (белый) 
+      gl.clearColor(1.0, 1.0, 1.0, 1.0);
+
+      // устанавливаем область отрисовки
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      // очищаем цветовой буфер
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // устанавливаем атрибут для буфера вершин
+      // указываем, что каждая вершина имеет по 3 координаты
+      gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+        vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+      // отрисовка линий
+      gl.drawElements(gl.LINE_LOOP, indexBuffer.numberOfItems, gl.UNSIGNED_SHORT, 0);
+    }
+
+    // Основная функция
+    window.onload = function () {
+      // получаем ссылку на элемент канвас
+      var canvas = document.getElementById("canvas1");
+
+      // пытаемся получить стандартный контекст
+      try {
+        gl = canvas.getContext("webgl");
+      }
+      catch (e) { }
+
+      // если не получилось получить контекст
+      if (!gl) {
+        alert("Ваш браузер не поддерживает WebGL");
+      }
+      // если всё хорошо
+      if (gl) {
+        // устанавливаем размеры области рисования
+        gl.viewportWidth = canvas.width;
+        gl.viewportHeight = canvas.height;
+
+        // инициализация шейдеры
+        initShaders();
+        // инициализация буферов
+        initBuffers();
+        // отрисовка сцены 
+        draw();
+      }
+    }
+  </script>
+</body>
+
+</html>
