@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Треугольник Серпинского с помощью WebGL</title>
+  <!-- Ефимова Дарья 22305!!! -->
+  <meta charset="utf-8" />
+</head>
+
+<body>
+ <!-- создание полотна для рисования -->
+<canvas id="canvas1" width="600" height="600">Пожалуйста, используйте браузер, который поддерживает canvas</canvas>
+
+<!-- фрагментный шейдер -->
+  <!-- цвет - синий -->
+  <script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+    void main() {
+      gl_FragColor = vec4(0.2, 0.0, 0.8, 1.0); 
+    }
+  </script>
+
+  <!-- вершинный шейдер -->
+  <script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec2 aVertexPosition;
+    void main() {
+      gl_Position = vec4(aVertexPosition, 0, 1);
+    }
+  </script>
+
+<script>
+// инициализация шейдеров
+function initShaders() {
+      // получаем шейдеры
+      var fragmentShader = getShader(gl.FRAGMENT_SHADER, 'shader-fs');
+      var vertexShader = getShader(gl.VERTEX_SHADER, 'shader-vs');
+
+      // создаем обьект программы шейдеров
+      shaderProgram = gl.createProgram();
+
+      // прикрепляем шейдеры к обьекту
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+
+      // и свзываем программу с контекстом WebGL
+      gl.linkProgram(shaderProgram);
+
+      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        alert("Не удалось установить шейдеры");
+      }
+      // если все хорошо, начинаем использование программы
+      gl.useProgram(shaderProgram);
+      // устанавливаем атрибут программы
+      shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+      // и его подключение для использование
+      gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+    }
+
+   // функция создания шейдера по типу и ID источника
+   function getShader(type, id) {
+      var source = document.getElementById(id).innerHTML;
+      // создаем шейдер по его типу
+      var shader = gl.createShader(type);
+      // устанавливаем истоник шейдера 
+      gl.shaderSource(shader, source);
+      // компилируем
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Ошибка компиляции шейдера: " + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }    
+
+// изачальные координаты большого треугольника (равноберд)
+const startPoints = [
+  [-1, -1],
+  [1, -1],
+  [0, 1]]
+
+// массив с остальными координатами
+const pointList = [];
+// 3 уровень отрисовки
+const recursiveDepth = 9;
+
+function findMiddle(pointA, pointB, half) {
+  return [
+    pointA[0] * half + pointB[0] * half,
+    pointA[1] * half + pointB[1] * half
+  ]
+}
+
+function generateTriangles(edgePoints, depth) {
+  // если дошли до последнего уровня
+  if (depth === 0) {
+    // добавляем массив координат в конец pointList
+    pointList.push(...edgePoints[0]);
+    pointList.push(...edgePoints[1]);
+    return pointList.push(...edgePoints[2]);
+  }
+
+  // находим середину на каждой стороне треугольника
+  const middlePointList = [
+    findMiddle(edgePoints[0], edgePoints[1], 0.5),
+    findMiddle(edgePoints[0], edgePoints[2], 0.5),
+    findMiddle(edgePoints[1], edgePoints[2], 0.5)
+  ];
+
+  depth--;
+  // продолжаем генерировать координаты треугольников
+  generateTriangles([edgePoints[0], middlePointList[0], middlePointList[1]], depth);
+  generateTriangles([edgePoints[1], middlePointList[0], middlePointList[2]], depth);
+  generateTriangles([edgePoints[2], middlePointList[1], middlePointList[2]], depth);
+}
+
+// установка буферов вершин
+function initBuffers() {
+      // создаем буфер вершин
+      vertexBuffer = gl.createBuffer();
+      // определяем тип буфера
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      // генерируем, получаем список координат треугольников
+      generateTriangles(startPoints, recursiveDepth)
+      // загрузка в буфер вершин и его типизация
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointList), gl.STATIC_DRAW);
+    }
+
+// отрисовка сцены
+function draw() {
+    // цвет полотна (белый) 
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+
+    // устанавливаем область отрисовки
+    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    // очищаем цветовой буфер
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // устанавливаем атрибут для буфера вершин
+    // указываем, что каждая вершина имеет по 3 координаты
+    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
+    2, gl.FLOAT, false, 0, 0);
+
+    // отрисовка линий
+    gl.drawArrays(gl.TRIANGLES, 0, pointList.length / 2);
+}
+
+// Основная функция
+window.onload = function () {
+      // получаем ссылку на элемент канвас
+      var canvas = document.getElementById("canvas1");
+
+      // пытаемся получить стандартный контекст
+      try {
+        gl = canvas.getContext("webgl");
+      }
+      catch (e) { }
+
+      // если не получилось получить контекст
+      if (!gl) {
+        alert("Ваш браузер не поддерживает WebGL");
+      }
+      // если всё хорошо
+      if (gl) {
+        // устанавливаем размеры области рисования
+        gl.viewportWidth = canvas.width;
+        gl.viewportHeight = canvas.height;
+
+        // инициализация шейдеры
+        initShaders();
+        // инициализация буферов
+        initBuffers();
+        // отрисовка сцены 
+        draw();
+      }
+    }
+
+</script>
+</body>
