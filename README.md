@@ -1,2 +1,2 @@
-# Multimedio-technology
+# Multimedia-technology
 6 sem, assigments
