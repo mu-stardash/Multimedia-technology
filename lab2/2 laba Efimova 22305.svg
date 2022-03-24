@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="2000" height="2000"
+     xmlns="http://www.w3.org/2000/svg" version="1.1"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+     <title> 2 лаб. Мультимедия, смайлик</title>
+     <desc>
+          Ефимова Дарья 22305
+     </desc>
+
+<!-- Рисуем сам смайлик -->
+<g id="face" transform="scale(0.1, 0.1), translate(500)">
+     <!-- Лицо -->
+     <circle cx="500" cy="1000" r="800" 
+          fill="lightpink"
+          stroke="lightcoral" stroke-width="50"/>
+
+     <!-- Левый глаз -->
+     <ellipse cx="100" cy ="800" rx="250" ry="150"
+          fill="white"
+          stroke="lightcoral" stroke-width="50"/>
+     <circle cx="100" cy="800" r="60"/>
+
+     <!-- Правый глаз -->
+     <ellipse cx="900" cy ="800" rx="250" ry="150"
+          fill="white"
+          stroke="lightcoral" stroke-width="50"/>
+     <circle cx="900" cy="800" r="60"/>
+
+     <!-- Улыбка) -->
+     <ellipse cx="500" cy="1300"  rx="400" ry="250"
+                 fill="none" stroke="lightcoral" stroke-width="50"/>
+     <rect x="70" y="1000" width="900" height="350"
+            fill="lightpink"/>
+</g>
+
+
+<!-- Поворачиваем этот смайлик на 30 градусов и смещаем вниз -->
+<use xlink:href="#face" transform="matrix(0.866, 0.5, -0.5, 0.866, 0, 0), translate(150, 100)"/>
+
+<!-- Сдвигаем на 45 градусов, смещаем на 300 по иксу и масштабируем на 50% по иксу -->
+<use xlink:href="#face" transform="matrix(0.5, 0, 0.5, 1, 300, 0)"/>
+
+
+<!-- Размытие -->
+<defs>
+     <filter id="myfeGaussianBlur">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5 5"/>
+     </filter>
+</defs>
+<use xlink:href="#face" filter="url(#myfeGaussianBlur)" transform="translate(300, 200)"/>
+
+
+
+<!-- Анимация смайлика по траектории, с автоматическим поворотом вокруг своей оси -->
+<!-- Кривая -->
+<path d="M500 300 Q 650 200, 800 300" 
+         style="fill: none; stroke:blue;stroke-width:2;"/>
+
+<!-- Делаем смайлик, маленький, смещаем на траекторию -->
+<g transform="scale(0.01, 0.01), translate(-250, -900)">
+     <!-- Лицо -->
+     <circle cx="500" cy="1000" r="800" 
+          fill="lightpink"
+          stroke="lightcoral" stroke-width="50"/>
+
+     <!-- Левый глаз -->
+     <ellipse cx="100" cy ="800" rx="250" ry="150"
+          fill="white"
+          stroke="lightcoral" stroke-width="50"/>
+     <circle cx="100" cy="800" r="60"/>
+
+     <!-- Правый глаз -->
+     <ellipse cx="900" cy ="800" rx="250" ry="150"
+          fill="white"
+          stroke="lightcoral" stroke-width="50"/>
+     <circle cx="900" cy="800" r="60"/>
+
+     <!-- Улыбка) -->
+     <ellipse cx="500" cy="1300"  rx="400" ry="250"
+                 fill="none" stroke="lightcoral" stroke-width="50"/>
+     <rect x="70" y="1000" width="900" height="350"
+            fill="lightpink"/>
+
+<animateMotion path="M500 300 Q 650 200, 800 300" dur="20s" rotate="auto"
+          repeatCount="indefinite"/>
+</g>
+
+</svg>
