@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Анимированный куб с освещением (освещение Фонга), WebGL</title>
+  <!-- Ефимова Дарья 22305!!! -->
+  <meta charset="utf-8" />
+</head>
+
+<body>
+
+  <!-- 
+// матрица преобразования: вращение по Y!!!
+// mat4 rotate = mat4(
+//    vec4( cos(a), 0, sin(a), 0),
+//    vec4( 0,      1,  0,     0),
+//    vec4( -sin(a), 0, cos(a), 0),
+//    vec4( 0,       0,  0,     1))
+//   ) -->
+
+
+  <!-- вершинный шейдер -->
+  <script id="shader-vs" type="x-shader/x-vertex">
+	uniform float rotateY;
+	attribute vec3 aVertexPosition;
+  attribute vec3 aVertexNormal;
+	varying vec3 normal;
+    
+	void main() {
+    // для анимации rotateY
+    // 25.0 - поворот по оси Х (самого куба, чтобы смотрел не прямо на нас)
+		vec2 cos = cos(radians(vec2(25.0, rotateY)));
+		vec2 sin = sin(radians(vec2(25.0, rotateY)));
+
+    // Задаем позицию (по Y - анимация, по Х - просто поворот) куба
+    // mat4 - матрица преобразований
+		gl_Position = vec4(aVertexPosition, 1.0) * mat4(        // вращение по Y
+			  cos.y,  0.0,  sin.y,  0.0,                          // x ось
+			  0.0,  2.0,  0.0,  0.0,                              // y ось
+			 -sin.y,  0.0,  cos.y,  0.0,                          // z ось
+			  0.0,  0.0,  0.0,  2.0                               // смещение
+		) * mat4(                                               // поворот по Х
+			  2.0,  0.0,  0.0,  0.0,
+			  0.0,  cos.x, -sin.x,  0.0,
+			  0.0,  sin.x,  cos.x,  0.0,
+			  0.0,  0.0,  0.0,  2.0
+		) * vec4(1.0, 1.0, -1.0, 1.0);
+
+    // Задаем модель нормалей
+    normal = aVertexNormal * mat3(                          // вращение по Y
+			   cos.y,  0.0,   sin.y,
+			  0.0,  1.0,  0.0,
+			  -sin.y,  0.0,   cos.y
+		) * mat3(                                               // поворот по Х
+        1.0,  0.0,  0.0,
+        0.0,  cos.x, -sin.x,
+        0.0,  sin.x,  cos.x
+  );
+	}
+</script>
+
+
+  <!-- фрагментный шейдер -->
+  <script id="shader-fs" type="x-shader/x-fragment">
+	precision mediump float;
+  varying vec3 normal;
+	void main() {
+    vec3 N = normalize(normal);               // получаем нормаль
+		vec3 L = normalize(vec3(-1.0, 1.0, 3.5)); // направление света
+
+    // dot() - получаем скалярное произведение вектора нормали и направления света - для диффузное отражение
+		gl_FragColor = vec4(vec3(0.7, 0.0, 0.3) * max(0.0, dot(L,N)), 1.0);
+	}
+</script>
+
+  <!-- создание полотна для рисования -->
+  <canvas id="canvas1" width="500" height="500">Пожалуйста, используйте браузер, который поддерживает canvas</canvas>
+
+
+  <script type="text/javascript">
+    var gl = null;      // контекст WebGL
+    var shaderProgram;  // для работы шейдеров
+
+    // инициализация шейдеров
+    function initShaders() {
+      // получаем шейдеры
+      var fragmentShader = getShader(gl.FRAGMENT_SHADER, 'shader-fs');
+      var vertexShader = getShader(gl.VERTEX_SHADER, 'shader-vs');
+
+      // создаем обьект программы шейдеров
+      shaderProgram = gl.createProgram();
+
+      // прикрепляем шейдеры к обьекту
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+
+      // и свзываем программу с контекстом WebGL
+      gl.linkProgram(shaderProgram);
+
+      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        alert("Не удалось установить шейдеры");
+      }
+      // если все хорошо, начинаем использование программы
+      gl.useProgram(shaderProgram);
+    }
+
+    // функция создания шейдера по типу и ID источника
+    function getShader(type, id) {
+      var source = document.getElementById(id).innerHTML;
+      // создаем шейдер по его типу
+      var shader = gl.createShader(type);
+      // устанавливаем истоник шейдера 
+      gl.shaderSource(shader, source);
+      // компилируем
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Ошибка компиляции шейдера: " + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    // установка буферов вершин и индексов
+    function initBuffers() {
+
+      // массив координат вершин куба и нормалей к каждой вершине
+      var vertices = [
+        //x    y     z     n.x  n.y  n.z
+        -1.0, -1.0, 1.0, -1.0, 0.0, 0.0, // left face
+        -1.0, 1.0, 1.0, -1.0, 0.0, 0.0,
+        -1.0, -1.0, -1.0, -1.0, 0.0, 0.0,
+        -1.0, -1.0, -1.0, -1.0, 0.0, 0.0,
+        -1.0, 1.0, 1.0, -1.0, 0.0, 0.0,
+        -1.0, 1.0, -1.0, -1.0, 0.0, 0.0,
+
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0,  // right face
+        1.0, 1.0, -1.0, 1.0, 0.0, 0.0,
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,
+        1.0, 1.0, -1.0, 1.0, 0.0, 0.0,
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+
+        -1.0, -1.0, -1.0, 0.0, -1.0, 0.0, // bottom face
+        1.0, -1.0, -1.0, 0.0, -1.0, 0.0,
+        -1.0, -1.0, 1.0, 0.0, -1.0, 0.0,
+        -1.0, -1.0, 1.0, 0.0, -1.0, 0.0,
+        1.0, -1.0, -1.0, 0.0, -1.0, 0.0,
+        1.0, -1.0, 1.0, 0.0, -1.0, 0.0,
+
+        -1.0, 1.0, -1.0, 0.0, 1.0, 0.0,  // top face
+        -1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
+        1.0, 1.0, -1.0, 0.0, 1.0, 0.0,
+        1.0, 1.0, -1.0, 0.0, 1.0, 0.0,
+        -1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
+        1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
+
+        -1.0, -1.0, -1.0, 0.0, 0.0, -1.0, // back face
+        -1.0, 1.0, -1.0, 0.0, 0.0, -1.0,
+        1.0, -1.0, -1.0, 0.0, 0.0, -1.0,
+        1.0, -1.0, -1.0, 0.0, 0.0, -1.0,
+        -1.0, 1.0, -1.0, 0.0, 0.0, -1.0,
+        1.0, 1.0, -1.0, 0.0, 0.0, -1.0,
+
+        1.0, -1.0, 1.0, 0.0, 0.0, 1.0, // front face
+        1.0, 1.0, 1.0, 0.0, 0.0, 1.0,
+        -1.0, -1.0, 1.0, 0.0, 0.0, 1.0,
+        -1.0, -1.0, 1.0, 0.0, 0.0, 1.0,
+        1.0, 1.0, 1.0, 0.0, 0.0, 1.0,
+        -1.0, 1.0, 1.0, 0.0, 0.0, 1.0
+      ];
+
+      // кол-во вершин в буфере
+      var numberOfVerties = 36;
+      // количество вершин на каждой из грани (так как рисуем треугольники)   
+      var itemDimension = 3;
+
+      // Создаем буфер веришн
+      var vertexBuffer = gl.createBuffer();
+      // определяем тип буфера
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+      // загрузка в буфер вершин и его типизация
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
+      // устанавливаем атрибут программы
+      shaderProgram.aVertexPosition = gl.getAttribLocation(shaderProgram, 'aVertexPosition')
+      // устанавливаем атрибут для буфера	
+      gl.vertexAttribPointer(shaderProgram.aVertexPosition, itemDimension, gl.FLOAT, false, 0, 0)
+      // и его подключение для использование
+      gl.enableVertexAttribArray(shaderProgram.aVertexPosition)
+
+      // инициализация преобразования (для анимации)
+      var rotateYLoc = gl.getUniformLocation(shaderProgram, 'rotateY')
+
+      // Шаг буфера (каждые шесть)
+      var bufferStride = 6
+      // смещение через каждые 3 координаты (3 для куба, 3 для нормалей)
+      var bufferOffset = 0;
+      [
+        'aVertexPosition',
+        'aVertexNormal'
+      ].forEach(function (attrName) {
+        var attrSize = 3
+        var attrLoc = gl.getAttribLocation(shaderProgram, attrName)
+        gl.vertexAttribPointer(attrLoc, attrSize, gl.FLOAT, false,
+          Float32Array.BYTES_PER_ELEMENT * bufferStride,
+          Float32Array.BYTES_PER_ELEMENT * bufferOffset)
+
+        gl.enableVertexAttribArray(attrLoc)
+        bufferOffset += attrSize
+      });
+
+
+      function renderFrame(time) {
+        // цвет полотна (белый) 
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        // очищаем цветовой буфер и глубинный
+        gl.clear(gl.COLOR_BUFFER_BIT || gl.DEPTH_BUFFER_BIT);
+        // включаем глубину цвета
+        gl.enable(gl.DEPTH_TEST);
+
+        var rotateY = 20 * time / 1000
+        gl.uniform1f(rotateYLoc, rotateY)
+        gl.drawArrays(gl.TRIANGLES, 0, numberOfVerties)
+        requestAnimationFrame(renderFrame)
+      }
+      requestAnimationFrame(renderFrame)
+    }
+
+    // Основная функция
+    window.onload = function () {
+      // получаем ссылку на элемент канвас
+      var canvas = document.getElementById("canvas1");
+
+      // пытаемся получить стандартный контекст
+      try {
+        gl = canvas.getContext("webgl");
+      }
+      catch (e) { }
+
+      // если не получилось получить контекст
+      if (!gl) {
+        alert("Ваш браузер не поддерживает WebGL");
+      }
+      // если всё хорошо
+      if (gl) {
+        // устанавливаем размеры области рисования
+        gl.viewportWidth = canvas.width;
+        gl.viewportHeight = canvas.height;
+        // устанавливаем область отрисовки
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+
+        // инициализация шейдеры
+        initShaders();
+        // инициализация буферов
+        initBuffers();
+      }
+    }
+  </script>
+</body>
+
+</html>
